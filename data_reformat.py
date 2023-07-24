@@ -5,13 +5,22 @@
     This program looks at the the various number of folders and subfolders within a specified location. For any
     scenario, it will count the number of vehicles present. It will then iterate through each vehicle accordingly. 
     It then counts the number of days present within a specified vehicle. For each day in a vehicle, the nescessary
-    data for sim_charge.py is created. This data has the following format:
+    data for sim_charge.py is created. This data has the following format for final_sec:
 
-    Time_of_Day | Energy_Consumption    | Latitude  | Longitude | Battery_Capacity  | SOC       | Stop      | 20_Min_Stop   | Hub_Location  | Available_Charging    | HC_Location   | Home_Charging     |
-    ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-    (string)    | (float)               | (float)   | (float)   | (float)           | (float)   | (boolean) | (boolean)     | (boolean)     | (boolean)             | (boolean)     | (boolean)         |  
-    [YYYY/MM/DD | [Wh/s]                | [degres]  | [degrees] | [kWh]             | [%]       |           |               |               |                       |               |                   |
+    Time_of_Day | Energy_Consumption    | Latitude  | Longitude | Battery_Capacity  | SOC       | Stop      
+    --------------------------------------------------------------------------------------------------------
+    (string)    | (float)               | (float)   | (float)   | (float)           | (float)   | (boolean) 
+    [YYYY/MM/DD | [Wh/s]                | [degres]  | [degrees] | [kWh]             | [%]       |           
+
+    This is done to test if indeed the vehicle has driven or if there is bad data that exists. This is is then
+    transformed to the following vehicle_day format to be used by sim_charge.
+
+    Time_of_Day | Energy_Consumption    | Latitude  | Longitude | Stop      | 20_Min_Stop   | Hub_Location  | Available_Charging    | HC_Location   | Home_Charging     
+    -------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    (string)    | (float)               | (float)   | (float)   | (boolean) | (boolean)     | (boolean)     | (boolean)             | (boolean)     | (boolean)           
+    [YYYY/MM/DD | [Wh/s]                | [degres]  | [degrees] |           |               |               |                       |               |                   
       HH:MM:SS]
+
 
     It is important to note the battery capacity given here is for 70kWh, and the SOC is calculated for no charging 
     scenario. That is why sim_charge.py is used for the entire algorithm. The only nescessary columns for sim_charge.py
@@ -156,7 +165,7 @@ def is_point_at_home(row, most_common):
     point_latitude = row['Latitude']
     point_longitude = row['Longitude']
     distance = haversine((target_latitude, target_longitude), (point_latitude, point_longitude), unit = 'm')
-    return distance <= 50  
+    return distance <= 150  
 
 
 ### Create output folders to save everything to
@@ -280,30 +289,36 @@ for i in range(1, num_folders + 1):
         merged_data['SOC'] = (merged_data['Battery_Capacity']/battery_capacity)*100
         merged_data_minute['SOC'] = (merged_data_minute['Battery_Capacity']/battery_capacity)*100
 
-        ### Plot the data and save as PNG in later code - per day only
-        plt.figure()
-        plt.plot(merged_data_minute['Time_of_Day'], merged_data_minute['SOC'])
-        plt.xlabel('Time of Day')
-        plt.ylabel('SOC')
-        plt.title(f'Vehicle {i} - Day {k}')
-        plt.xticks(rotation=45, ha='right')
+        ### check if vehicle actually drove that day, if not, don't save the graphs and delete folder
+        if(merged_data['SOC'].iloc[-1] < 90):
+            ### Plot the data and save as PNG in later code - per day only
+            plt.figure()
+            plt.plot(merged_data_minute['Time_of_Day'], merged_data_minute['SOC'])
+            plt.xlabel('Time of Day')
+            plt.ylabel('SOC')
+            plt.title(f'Vehicle {i} - Day {k}')
+            plt.xticks(rotation=45, ha='right')
 
-        ### Save the data to Outputs location folder
-        # Create the file path
-        folder_save_path = destination_folder + folder_prefix + str(i) + '/' + new_folder_prefix + day_num_array[k - 1] + '/'
-        # Save secondly and minuely data
-        full_save_path_1 = folder_save_path + csv_save_name_1
-        full_save_path_2 = folder_save_path + csv_save_name_2
-        merged_data.to_csv(full_save_path_1, index=False)
-        merged_data_minute.to_csv(full_save_path_2, index=False)
-        # Save PNG
-        png_full_path = folder_save_path + png_file_name
-        plt.savefig(png_full_path, dpi=300, bbox_inches='tight')
-        print(f'Vehicle {i} - Day {k} = Done')
-        plt.close()
+            ### Save the data to Outputs location folder
+            # Create the file path
+            folder_save_path = destination_folder + folder_prefix + str(i) + '/' + new_folder_prefix + day_num_array[k - 1] + '/'
+            # Save secondly and minuely data
+            full_save_path_1 = folder_save_path + csv_save_name_1
+            full_save_path_2 = folder_save_path + csv_save_name_2
+            merged_data.to_csv(full_save_path_1, index=False)
+            merged_data_minute.to_csv(full_save_path_2, index=False)
+            # Save PNG
+            png_full_path = folder_save_path + png_file_name
+            plt.savefig(png_full_path, dpi=300, bbox_inches='tight')
+            print(f'Vehicle {i} - Day {k} = Done')
+            plt.close()
 
-        ### Save data to be plotted
-        data_list.append(merged_data_minute)
+            ### Save data to be plotted
+            data_list.append(merged_data_minute)
+        else:
+            print(f'Vehicle {i} - Day {k} = Did not drive')
+            folder_save_path = destination_folder + folder_prefix + str(i) + '/' + new_folder_prefix + day_num_array[k - 1] + '/'
+            shutil.rmtree(folder_save_path)
     
     ### Plot each days SOC per vehicle
     plt.figure()
@@ -321,10 +336,13 @@ for i in range(1, num_folders + 1):
     plt.close()
 
 
+#################################################################################################
+################ Reframe each vehicle to start from 04:00:00 an end at 03:59:59 #################
+#################################################################################################
 
 
 print('Reframing data points')
-##### Reframe each vehicle to start from 04:00:00 an end at 03:59:59 ##########
+
         
 destination_folder = "D:/Masters/Simulations/Simulation_1/Usable_Data/"
 days = [str(num).zfill(2) for num in range(1, 32)]  # Days in the month

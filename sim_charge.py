@@ -5,8 +5,6 @@
     Stellenbosch Taxi Rank. The option is also there to include home charging into the simulation. The results are
     then categorised as Percentage_Day_Completion (how many vehicles completed there trip in that day) and 
     Vehicle_Completion (of the trips the vehicle needs to take, how many has it succesfully completed)
-    
-    TODO Add the home charging scenario as well
 
     When the program rearranges the data, it reads it from the individual folders of the vehicle per day,
     and combines the vehicles active on a specific day to the structure as follows:
@@ -30,8 +28,7 @@
     created as dataframes for that day.
 
     The charging is classified as CP/CV (Constant Power followed by Constant Voltage). As a result, the battery 
-    voltages and currents for each vehicle are thus also modelled and saved as graphs and files. TODO simulate 
-    the other voltages
+    voltages and currents for each vehicle are thus also modelled and saved as graphs and files. 
 
     TO_NOTE this programme has been written with a month of data only, and so should be changed if more data is
     given.
@@ -440,7 +437,7 @@ def save_individual_graphs(og_soc, V_b, save_folder, day, timedelta_index):
         plt.close(fig)  
 
 
-def save_complete_graphs(og_soc, grid_power, day, save_folder, timedelta_index):
+def save_complete_graphs(og_soc, grid_power, day, save_folder, timedelta_index, num_vehicles_day):
 
     ### Plot and save all vehicles graph
     plt.figure()
@@ -489,6 +486,30 @@ def save_complete_graphs(og_soc, grid_power, day, save_folder, timedelta_index):
     save_path = save_folder + 'Grid_Power_Day_' + day + '.svg'
     plt.savefig(save_path, format = 'svg')
     plt.close()
+
+    ### Plot grid power usage per taxi of that day
+    grid_sums = grid_sums/num_vehicles_day
+
+    plt.figure()
+    plt.plot(timedelta_index, grid_sums)
+    plt.xlabel('Time of Day')
+    plt.ylabel('Power [kW]')
+    plt.title('Grid Power per Vehicle for Day_' + day)
+    plt.ylim(0, 170)
+    plt.xticks(rotation=45)
+
+    plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
+    plt.gca().xaxis.set_major_locator(mdates.AutoDateLocator())
+
+    plt.subplots_adjust(bottom = 0.2)
+
+    save_path = save_folder + 'Grid_Power_Vehicle_Day_' + day + '.png'
+    plt.savefig(save_path)
+    # Save the plot to a specific location as a svg
+    save_path = save_folder + 'Grid_Power_Vehicle_Day_' + day + '.svg'
+    plt.savefig(save_path, format = 'svg')
+    plt.close()
+
 
 
 
@@ -636,6 +657,7 @@ for m in range(0, length_days):
 
         # Get the number of total trips for the day
         day_total_trips[save_common + days[m]] = len(og_soc.columns)
+        num_vehicles_day = len(og_soc.columns)
 
         # Add to the total number of trips Vehicle x is supossed to complete
         for vehicle_trip in og_soc.columns:
@@ -704,7 +726,7 @@ for m in range(0, length_days):
             ### Plot and save individual vehicle graphs
             print('\nSaving graphs')
             save_individual_graphs(og_soc, V_b, save_folder, days[m], timedelta_index)
-            save_complete_graphs(og_soc, grid_power, days[m], save_folder, timedelta_index)
+            save_complete_graphs(og_soc, grid_power, days[m], save_folder, timedelta_index, num_vehicles_day)
                 
             ### Save dataframes
             print('Saving files')
