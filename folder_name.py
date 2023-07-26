@@ -15,10 +15,9 @@ import shutil
 import gzip
 
 ### Change these directories for script usage if a new simulation is being done
-source_folder_1 = "D:\Masters\Chris Data Model\Bus_Day\EV_Simulation\EV_Simulation_Outputs"
-source_folder_2 = "D:\Masters\Chris Data Model\Bus_Day\Mobility_Simulation\FCD_Data"
+source_folder_1 = "D:\Masters\Chris Data Model\eMBT_SB_BF_SSW_v3\EV_Simulation\SUMO_Simulation_Outputs"
 
-destination_folder = "D:\Masters\Simulations\Simulation_2\Inputs"
+destination_folder = "D:\Masters\Simulations\Simulation_1\Inputs"
 
 # Create and copy file structure function
 def copy_folder_structure(source_folder, destination_folder):
@@ -41,16 +40,18 @@ def copy_folder_structure(source_folder, destination_folder):
             shutil.copy2(source_file_path, destination_file_path)
 
 # Rename the folders function
-def rename_subfolders_in_path(path):
-    for folder_name in os.listdir(path):
+def rename_folders_and_subfolders_in_path(path):
+    for i, folder_name in enumerate(os.listdir(path), start=1):
         folder_path = os.path.join(path, folder_name)
         if os.path.isdir(folder_path):
-            for subfolder_name in os.listdir(folder_path):
-                subfolder_path = os.path.join(folder_path, subfolder_name)
+            new_folder_name = f"Vehicle_{i}"
+            new_folder_path = os.path.join(path, new_folder_name)
+            os.rename(folder_path, new_folder_path)
+            for k, subfolder_name in enumerate(os.listdir(new_folder_path), start=1):
+                subfolder_path = os.path.join(new_folder_path, subfolder_name)
                 if os.path.isdir(subfolder_path):
-                    subfolder_prefix = f"{folder_name}_{subfolder_name[-2:]}"
-                    new_subfolder_name = subfolder_prefix
-                    new_subfolder_path = os.path.join(folder_path, new_subfolder_name)
+                    new_subfolder_name = f"Vehicle_{i}_{k:02d}"
+                    new_subfolder_path = os.path.join(new_folder_path, new_subfolder_name)
                     os.rename(subfolder_path, new_subfolder_path)
 
 # Decompress folders function
@@ -67,8 +68,7 @@ def decompress_csv_gz_files_recursive(folder_path):
 
 
 copy_folder_structure(source_folder_1, destination_folder)
-copy_folder_structure(source_folder_2, destination_folder)
-#rename_subfolders_in_path(destination_folder)
+rename_folders_and_subfolders_in_path(destination_folder)
 decompress_csv_gz_files_recursive(destination_folder)
 
 
